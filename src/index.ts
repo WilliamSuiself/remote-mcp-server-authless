@@ -14,7 +14,7 @@ export class MyMCP extends McpAgent {
 		this.server.tool(
 			"add",
 			{ a: z.number(), b: z.number() },
-			async ({ a, b }) => ({
+			async ({ a, b }: { a: number; b: number }) => ({
 				content: [{ type: "text", text: String(a + b) }],
 			})
 		);
@@ -27,8 +27,8 @@ export class MyMCP extends McpAgent {
 				a: z.number(),
 				b: z.number(),
 			},
-			async ({ operation, a, b }) => {
-				let result: number;
+			async ({ operation, a, b }: { operation: "add" | "subtract" | "multiply" | "divide"; a: number; b: number }) => {
+				let result: number = 0;
 				switch (operation) {
 					case "add":
 						result = a + b;
@@ -76,15 +76,15 @@ export default {
 			try {
 				if (request.headers.get("content-type")?.includes("application/json")) {
 					const body = await request.clone().json();
-					if (body && body.stream === true) {
+					if (typeof body === "object" && body !== null && "stream" in body && body.stream === true) {
 						isStream = true;
 					}
 				}
 			} catch (e) {}
 			if (isStream) {
-				return agent.serveSSE("/mcp").fetch(request, env, ctx);
+				return agent.server.serveSSE("/mcp").fetch(request, env, ctx);
 			} else {
-				return agent.serve("/mcp").fetch(request, env, ctx);
+				return agent.server.serve("/mcp").fetch(request, env, ctx);
 			}
 		}
 
