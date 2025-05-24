@@ -58,16 +58,34 @@ export class MyMCP extends McpAgent {
 	}
 }
 
+const agent = new MyMCP();
+// 注意：Cloudflare Worker/Edge Runtime 不能在顶层用 await，需在 fetch 里保证 init 只执行一次
+let agentReady: Promise<void> | null = null;
+
 export default {
-	fetch(request: Request, env: Env, ctx: ExecutionContext) {
+	async fetch(request: Request, env: Env, ctx: ExecutionContext) {
+		if (!agentReady) {
+			agentReady = agent.init();
+		}
+		await agentReady;
+
 		const url = new URL(request.url);
 
-		if (url.pathname === "/sse" || url.pathname === "/sse/message") {
-			return MyMCP.serveSSE("/sse").fetch(request, env, ctx);
-		}
-
 		if (url.pathname === "/mcp") {
-			return MyMCP.serve("/mcp").fetch(request, env, ctx);
+			let isStream = false;
+			try {
+				if (request.headers.get("content-type")?.includes("application/json")) {
+					const body = await request.clone().json();
+					if (body && body.stream === true) {
+						isStream = true;
+					}
+				}
+			} catch (e) {}
+			if (isStream) {
+				return agent.serveSSE("/mcp").fetch(request, env, ctx);
+			} else {
+				return agent.serve("/mcp").fetch(request, env, ctx);
+			}
 		}
 
 		return new Response("Not found", { status: 404 });
