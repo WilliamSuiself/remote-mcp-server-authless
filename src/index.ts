@@ -72,6 +72,6 @@ export default {
 			}
 		}
 
-		return new Response("Not found", { status: 404 });
+		return new Response("Not found - this is a MCP server reply", { status: 404 });
 	},
 };
